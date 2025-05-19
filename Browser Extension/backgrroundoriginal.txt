@@ -1,0 +1,59 @@
+// Listen for installation
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('AI Shopping Assistant installed');
+});
+
+// Store conversation history
+let conversationHistory = [];
+
+// Handle messages from content script or popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'processAIRequest') {
+    processAIRequest(request.data)
+      .then(response => sendResponse(response))
+      .catch(error => sendResponse({ error: error.message }));
+    return true; // Required for async sendResponse
+  }
+});
+
+// Listen for keyboard command to toggle sidebar
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle-sidebar") {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      chrome.tabs.sendMessage(tabs[0].id, {action: "toggleSidebar"});
+    });
+  }
+});
+
+// Function to process AI requests
+async function processAIRequest(data) {
+  try {
+    const response = await fetch('http://localhost:5000/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: data.userId || 'default',
+        message: data.message
+      })
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      return {
+        success: true,
+        message: result.message
+      };
+    } else {
+      throw new Error(result.error || 'Failed to get response from server');
+    }
+  } catch (error) {
+    console.error('Error processing AI request:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+} 

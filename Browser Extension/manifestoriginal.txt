@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Flow AI Assistant",
+  "version": "1.0",
+  "description": "An AI-powered shopping assistant that creates personalized grocery carts",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon48.png"
+    }
+  },
+  "options_page": "settings.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "commands": {
+    "toggle-sidebar": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E"
+      },
+      "description": "Toggle the AI Shopping Assistant sidebar"
+    }
+  }
+} 

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Shopping Assistant</title>
+  <style>
+    body {
+      width: 400px;
+      height: 500px;
+      margin: 0;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    #chat-container {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .message {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 5px;
+    }
+    .user-message {
+      background-color: #e3f2fd;
+      margin-left: 20%;
+    }
+    .bot-message {
+      background-color: #f5f5f5;
+      margin-right: 20%;
+    }
+    #input-container {
+      display: flex;
+      gap: 10px;
+    }
+    #user-input {
+      flex-grow: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container"></div>
+  <div id="input-container">
+    <input type="text" id="user-input" placeholder="Type your message...">
+    <button id="send-button">Send</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 
