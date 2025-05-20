@@ -458,3 +458,93 @@ if (window.location.hostname.includes('coop.ch')) {
   };
   console.log('testParse function is available on window');
 }
+
+// --- Coop.ch Programmatic Search and Parse (JSON endpoint) ---
+/**
+ * Fetches Coop's searchresultJson endpoint for a given search term, parses productTile data, and returns products.
+ * @param {string} searchTerm
+ * @returns {Promise<Array>} Array of product objects
+ */
+async function fetchAndParseCoopProducts(searchTerm) {
+  // Construct the endpoint URL (adjust as needed for Coop's API)
+  const url = `https://www.coop.ch/de/dynamic-pageload/searchresultJson?searchString=${encodeURIComponent(searchTerm)}&page=1&pageSize=30&sort=relevance`;
+  // Use background script to avoid CORS issues
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ action: "fetchCoopSearch", url }, (response) => {
+      if (response && response.success) {
+        try {
+          // The response may be HTML or JSON depending on endpoint; try to parse as JSON
+          let data;
+          try {
+            data = JSON.parse(response.html);
+          } catch (e) {
+            // If not JSON, try to extract JSON from HTML (not expected for this endpoint)
+            reject('Response is not valid JSON');
+            return;
+          }
+          // Find the productTile anchor
+          const productTileAnchor = (data.anchors || []).find(a => a.name === "productTile");
+          if (!productTileAnchor || !productTileAnchor.json) {
+            reject('No productTile data found');
+            return;
+          }
+          const products = parseCoopProductTileJson(productTileAnchor.json);
+          resolve(products);
+        } catch (err) {
+          reject('Error parsing Coop product data: ' + err);
+        }
+      } else {
+        reject('Failed to fetch Coop search results: ' + (response && response.error));
+      }
+    });
+  });
+}
+
+// --- Add button to sidebar to trigger Coop search and display results ---
+function addCoopSearchButtonToSidebar() {
+  const sidebar = document.getElementById('ai-shopping-sidebar');
+  if (!sidebar) return;
+  // Prevent duplicate button
+  if (document.getElementById('coop-search-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'coop-search-btn';
+  btn.textContent = 'Search Coop (kaffee)';
+  btn.style.margin = '10px';
+  btn.style.padding = '8px 16px';
+  btn.style.backgroundColor = '#795548';
+  btn.style.color = 'white';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '4px';
+  btn.style.cursor = 'pointer';
+  btn.onclick = async function() {
+    const chatContainer = document.getElementById('chat-container');
+    if (chatContainer) {
+      chatContainer.innerHTML += '\n[Bot] Searching Coop for "kaffee"...';
+    }
+    try {
+      const products = await fetchAndParseCoopProducts('kaffee');
+      if (chatContainer) {
+        chatContainer.innerHTML += `\n[Bot] Found ${products.length} products. Example:\n` +
+          products.slice(0, 3).map(p => `- ${p.name} (${p.price} CHF)`).join('\n');
+      } else {
+        console.log('Coop products:', products);
+      }
+    } catch (err) {
+      if (chatContainer) {
+        chatContainer.innerHTML += '\n[Bot] Error: ' + err;
+      } else {
+        console.error(err);
+      }
+    }
+  };
+  sidebar.appendChild(btn);
+}
+
+// Add the Coop search button when the sidebar is created
+const origToggleSidebar = window.toggleSidebar;
+window.toggleSidebar = function() {
+  origToggleSidebar.apply(this, arguments);
+  setTimeout(addCoopSearchButtonToSidebar, 500); // Wait for sidebar to be in DOM
+};
+// If sidebar already exists (page load), add button
+setTimeout(addCoopSearchButtonToSidebar, 1000);
