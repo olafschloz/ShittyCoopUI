@@ -445,3 +445,15 @@ function parseCoopProductTileJson(productTileJson) {
 // Make the function available in the global scope for testing
 window.parseCoopProductTileJson = parseCoopProductTileJson;
 console.log('CONTENT SCRIPT END REACHED');
+
+const script = document.createElement('script');
+script.textContent = parseCoopProductTileJson.toString() + '\nwindow.parseCoopProductTileJson = parseCoopProductTileJson;';
+document.documentElement.appendChild(script);
+
+// Example test (remove after testing)
+if (window.location.hostname.includes('coop.ch')) {
+  window.testParse = function(sample) {
+    return parseCoopProductTileJson(sample.json);
+  };
+  console.log('testParse function is available on window');
+}
