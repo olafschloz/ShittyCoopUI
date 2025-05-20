@@ -1,3 +1,4 @@
+// Remove or comment out noisy console logs
 console.log("[CONTENT] content.js executed");
 
 const COOP_PRODUCT_DATA_KEY = 'coopProductData';
@@ -17,7 +18,7 @@ function getInnerText(element) {
 function isCoopProductPage() {
   const hostnameCheck = window.location.hostname.includes('coop.ch');
   const pathnameCheck = window.location.pathname.includes('/p/');
-  console.log(`[CONTENT] isCoopProductPage: hostname ok? ${hostnameCheck}, pathname ok? ${pathnameCheck}, current URL: ${window.location.href}`);
+  // console.log(`[CONTENT] isCoopProductPage: hostname ok? ${hostnameCheck}, pathname ok? ${pathnameCheck}, current URL: ${window.location.href}`);
   return hostnameCheck && pathnameCheck;
 }
 
@@ -55,7 +56,7 @@ function extractAndStoreCoopProductData() {
   if (!isCoopProductPage()) {
     return null;
   }
-  console.log('[CONTENT] Attempting to extract data from Coop product page');
+  // console.log('[CONTENT] Attempting to extract data from Coop product page');
 
   const productData = {};
   const url = window.location.href;
@@ -94,44 +95,40 @@ function extractAndStoreCoopProductData() {
   const cleanedData = Object.fromEntries(Object.entries(productData).filter(([_, v]) => v !== null && v !== undefined));
 
   if (Object.keys(cleanedData).length > 2) { // Ensure we got more than just URL and timestamp
-    console.log('[CONTENT] Extracted data:', cleanedData);
+    // console.log('[CONTENT] Extracted data:', cleanedData);
     try {
       const allCoopData = JSON.parse(localStorage.getItem(COOP_PRODUCT_DATA_KEY) || '{}');
       allCoopData[url] = cleanedData;
       localStorage.setItem(COOP_PRODUCT_DATA_KEY, JSON.stringify(allCoopData));
-      console.log('[CONTENT] Product data stored in localStorage for URL:', url);
+      // console.log('[CONTENT] Product data stored in localStorage for URL:', url);
       return cleanedData;
     } catch (e) {
       console.error('[CONTENT] Error saving to localStorage:', e);
     }
   } else {
-    console.warn('[CONTENT] Did not extract enough data to store for URL:', url, cleanedData);
+    // console.warn('[CONTENT] Did not extract enough data to store for URL:', url, cleanedData);
   }
   return null;
 }
 
 // --- Programmatic Coop.ch Interaction ---
-async function searchCoopSite(searchTerm) {
+function searchCoopSite(searchTerm) {
   const encodedSearchTerm = encodeURIComponent(searchTerm);
   const searchUrl = `https://www.coop.ch/de/search/?text=${encodedSearchTerm}`;
-  console.log(`[CONTENT] Searching Coop.ch for: ${searchTerm} (URL: ${searchUrl})`);
-
-  try {
-    const response = await fetch(searchUrl);
-    if (!response.ok) {
-      console.error(`[CONTENT] Failed to fetch search results from ${searchUrl}. Status: ${response.status} ${response.statusText}`);
-      return null;
-    }
-    const htmlText = await response.text();
-    console.log(`[CONTENT] Successfully fetched search results for: ${searchTerm}. HTML length: ${htmlText.length}`);
-    // For now, just log a snippet of the HTML to verify
-    // console.log(htmlText.substring(0, 2000)); 
-    // In the next step, we will parse this htmlText
-    return htmlText;
-  } catch (error) {
-    console.error(`[CONTENT] Error during fetch for ${searchUrl}:`, error);
-    return null;
-  }
+  console.log(`[CONTENT] Requesting background fetch for: ${searchTerm} (URL: ${searchUrl})`);
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { action: "fetchCoopSearch", url: searchUrl },
+      (response) => {
+        if (response && response.success) {
+          resolve(response.html);
+        } else {
+          console.error("[CONTENT] Background fetch failed:", response && response.error);
+          reject(response && response.error);
+        }
+      }
+    );
+  });
 }
 
 // Example of how to test (you can call this from browser console on a coop.ch page after reloading extension):
@@ -149,33 +146,33 @@ if (isCoopProductPage()) {
 
 
 if (!window.hasAISidebarListener) {
-  console.log("[CONTENT] Adding message listener");
+  // console.log("[CONTENT] Adding message listener");
   chrome.runtime.onMessage.addListener((request) => {
-    console.log("[CONTENT] Message received:", request);
+    // console.log("[CONTENT] Message received:", request);
     if (request.action === "toggleSidebar") {
-      console.log("[CONTENT] toggleSidebar action received. Checking if it's a Coop product page...");
+      // console.log("[CONTENT] toggleSidebar action received. Checking if it's a Coop product page...");
       if (isCoopProductPage()) {
-        console.log("[CONTENT] It IS a Coop product page. Calling extractAndStoreCoopProductData().");
+        // console.log("[CONTENT] It IS a Coop product page. Calling extractAndStoreCoopProductData().");
         extractAndStoreCoopProductData();
       } else {
-        console.log("[CONTENT] It is NOT a Coop product page. Skipping data extraction.");
+        // console.log("[CONTENT] It is NOT a Coop product page. Skipping data extraction.");
       }
       toggleSidebar();
     }
   });
   window.hasAISidebarListener = true;
 } else {
-  console.log("[CONTENT] Message listener already exists");
+  // console.log("[CONTENT] Message listener already exists");
 }
 
 function toggleSidebar() {
-  console.log("[CONTENT] toggleSidebar() called");
+  // console.log("[CONTENT] toggleSidebar() called");
   let sidebar = document.getElementById('ai-shopping-sidebar');
   if (sidebar) {
-    console.log("[CONTENT] Sidebar exists, removing it.");
+    // console.log("[CONTENT] Sidebar exists, removing it.");
     sidebar.remove();
   } else {
-    console.log("[CONTENT] Sidebar does not exist, creating it.");
+    // console.log("[CONTENT] Sidebar does not exist, creating it.");
     sidebar = document.createElement('div');
     sidebar.id = 'ai-shopping-sidebar';
     sidebar.style.position = 'fixed';
@@ -191,7 +188,7 @@ function toggleSidebar() {
     sidebar.style.flexDirection = 'column';
     sidebar.style.fontFamily = 'Arial, sans-serif';
 
-    console.log("[CONTENT] Sidebar element created:", sidebar);
+    // console.log("[CONTENT] Sidebar element created:", sidebar);
 
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '×';
@@ -366,13 +363,85 @@ function toggleSidebar() {
     sidebar.appendChild(apiKeyButton);
 
     document.body.appendChild(sidebar);
-    console.log("[CONTENT] Sidebar appended to body.");
+    // console.log("[CONTENT] Sidebar appended to body.");
   }
 }
 
 // --- Automatic Test Call (for debugging programmatic search) ---
 if (window.location.hostname.includes('coop.ch')) {
-  console.log('[CONTENT] Automatically calling searchCoopSite("bio milch") for testing.');
-  searchCoopSite('bio milch');
+  // console.log('[CONTENT] Automatically calling searchCoopSite("bio milch") for testing.');
+  searchCoopSite('bio milch').then(html => {
+    if (html) {
+      // console.log('[CONTENT] First 5000 chars of fetched HTML:', html.substring(0, 5000));
+      parseCoopSearchResults(html);
+    } else {
+      // console.warn('[CONTENT] No HTML returned from searchCoopSite for parsing.');
+    }
+  });
 }
 // --- End of Automatic Test Call ---
+
+// --- Parse Coop.ch Search Results ---
+function parseCoopSearchResults(htmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, 'text/html');
+  const productDivs = doc.querySelectorAll('div[data-producttile-wrapper]');
+  const products = [];
+
+  productDivs.forEach(div => {
+    const link = div.querySelector('a.productTile');
+    if (!link) return;
+    let url = link.getAttribute('href');
+    if (url && url.startsWith('/')) url = 'https://www.coop.ch' + url;
+    const nameEl = link.querySelector('p.productTile-details__name-value');
+    const priceEl = link.querySelector('p.productTile__price-value-lead-price');
+    const weightEl = link.querySelector('span.productTile__quantity-text');
+    const name = nameEl ? nameEl.textContent.trim() : null;
+    const price = priceEl ? priceEl.textContent.trim() : null;
+    const weight_volume = weightEl ? weightEl.textContent.trim() : null;
+    if (name && url) {
+      products.push({ name, url, price, weight_volume });
+    }
+  });
+
+  // console.log('[CONTENT] Parsed Coop search results:', products);
+  return products;
+}
+
+// --- Parse Coop.ch productTile JSON (from searchresultJson endpoint) ---
+/**
+ * Extracts product info from Coop's productTile JSON structure.
+ * @param {object} productTileJson - The JSON object from Coop's searchresultJson endpoint (elements array).
+ * @returns {Array} Array of product objects with key fields.
+ */
+function parseCoopProductTileJson(productTileJson) {
+  if (!productTileJson || !Array.isArray(productTileJson.elements)) return [];
+  return productTileJson.elements
+    .filter(el => el.elementType === ".producttile.ProductTileSupermarketElement")
+    .map(el => ({
+      id: el.id,
+      name: el.title,
+      brand: el.brand,
+      price: el.price,
+      currency: el.currency,
+      priceContext: el.priceContext, // e.g. "1.90/100g"
+      priceContextPrice: el.priceContextPrice,
+      priceContextAmount: el.priceContextAmount,
+      quantity: el.quantity,
+      ratingValue: el.ratingValue,
+      ratingAmount: el.ratingAmount,
+      image: el.image && el.image.src ? (el.image.src.startsWith('http') ? el.image.src : 'https://www.coop.ch' + el.image.src) : null,
+      url: el.href ? (el.href.startsWith('http') ? el.href : 'https://www.coop.ch' + el.href) : null,
+      fastCheckout: el.fastCheckout,
+      variableAmount: el.variableAmount,
+      categories: el.udoCat,
+    }));
+}
+
+// Example usage (uncomment to test in console):
+// const products = parseCoopProductTileJson(YOUR_JSON_OBJECT_HERE);
+// console.log('[CONTENT] Products:', products);
+
+// Make the function available in the global scope for testing
+window.parseCoopProductTileJson = parseCoopProductTileJson;
+console.log('CONTENT SCRIPT END REACHED');

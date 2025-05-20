@@ -49,3 +49,14 @@ chrome.action.onClicked.addListener((tab) => {
     console.warn("[BACKGROUND] action.onClicked: Tab ID is missing.");
   }
 });
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "fetchCoopSearch") {
+    fetch(request.url)
+      .then(response => response.text())
+      .then(html => sendResponse({ success: true, html }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    // Required for async sendResponse
+    return true;
+  }
+});
